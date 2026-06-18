@@ -10,10 +10,13 @@ async function json<T>(res: Response): Promise<T> {
   return data as T;
 }
 
-export async function fetchItems(params: { q?: string; location?: string } = {}): Promise<Item[]> {
+export async function fetchItems(
+  params: { q?: string; location?: string; shopping?: boolean } = {}
+): Promise<Item[]> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.location) qs.set("location", params.location);
+  if (params.shopping) qs.set("shopping", "1");
   const res = await fetch(`/api/items?${qs.toString()}`, { cache: "no-store" });
   return (await json<{ items: Item[] }>(res)).items;
 }

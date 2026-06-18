@@ -46,5 +46,18 @@ export function getDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_items_location ON items(location);
   `);
 
+  migrate(db);
   return db;
+}
+
+// Lightweight, additive migrations. CREATE TABLE IF NOT EXISTS can't add
+// columns to an existing table, so new columns are added here idempotently.
+function migrate(conn: Database.Database) {
+  const cols = conn.prepare("PRAGMA table_info(items)").all() as { name: string }[];
+  const has = (name: string) => cols.some((c) => c.name === name);
+
+  // `needed` drives the shopping list ("need more" flag).
+  if (!has("needed")) {
+    conn.exec("ALTER TABLE items ADD COLUMN needed INTEGER NOT NULL DEFAULT 0");
+  }
 }

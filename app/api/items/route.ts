@@ -9,6 +9,7 @@ export function GET(req: NextRequest) {
   const items = listItems({
     search: searchParams.get("q") ?? undefined,
     location: searchParams.get("location") ?? undefined,
+    shopping: searchParams.get("shopping") === "1",
   });
   return NextResponse.json({ items });
 }

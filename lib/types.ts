@@ -10,6 +10,7 @@ export type Item = {
   expiration_date: string | null; // YYYY-MM-DD
   image_url: string | null;
   notes: string | null;
+  needed: number; // 0 | 1 — on the shopping list ("need more")
   created_at: string;
   updated_at: string;
 };
@@ -26,6 +27,7 @@ export type ItemInput = {
   expiration_date?: string | null;
   image_url?: string | null;
   notes?: string | null;
+  needed?: number | boolean;
 };
 
 // Normalized result from a barcode product lookup.

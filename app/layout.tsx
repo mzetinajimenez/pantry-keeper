@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Pantry Keeper",
   description: "Scan and catalog the items in your pantry from your phone.",
   manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

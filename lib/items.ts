@@ -4,6 +4,8 @@ import type { Item, ItemInput } from "./types";
 type ListOptions = {
   search?: string;
   location?: string;
+  // Shopping list: items flagged "need more" or that are out of stock.
+  shopping?: boolean;
 };
 
 export function listItems(opts: ListOptions = {}): Item[] {
@@ -18,6 +20,9 @@ export function listItems(opts: ListOptions = {}): Item[] {
   if (opts.location && opts.location.trim()) {
     clauses.push("location = @location");
     params.location = opts.location.trim();
+  }
+  if (opts.shopping) {
+    clauses.push("(needed = 1 OR quantity <= 0)");
   }
 
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
@@ -49,9 +54,9 @@ export function createItem(input: ItemInput): Item {
   const info = db
     .prepare(
       `INSERT INTO items
-        (barcode, name, brand, category, quantity, unit, location, expiration_date, image_url, notes)
+        (barcode, name, brand, category, quantity, unit, location, expiration_date, image_url, notes, needed)
        VALUES
-        (@barcode, @name, @brand, @category, @quantity, @unit, @location, @expiration_date, @image_url, @notes)`
+        (@barcode, @name, @brand, @category, @quantity, @unit, @location, @expiration_date, @image_url, @notes, @needed)`
     )
     .run({
       barcode: input.barcode ?? null,
@@ -64,6 +69,7 @@ export function createItem(input: ItemInput): Item {
       expiration_date: input.expiration_date ?? null,
       image_url: input.image_url ?? null,
       notes: input.notes ?? null,
+      needed: input.needed ? 1 : 0,
     });
   return getItem(Number(info.lastInsertRowid))!;
 }
@@ -79,6 +85,7 @@ const UPDATABLE: (keyof ItemInput)[] = [
   "expiration_date",
   "image_url",
   "notes",
+  "needed",
 ];
 
 export function updateItem(id: number, patch: Partial<ItemInput>): Item | undefined {
@@ -88,8 +95,10 @@ export function updateItem(id: number, patch: Partial<ItemInput>): Item | undefi
 
   for (const key of UPDATABLE) {
     if (key in patch) {
+      const raw = (patch as Record<string, unknown>)[key];
       sets.push(`${key} = @${key}`);
-      params[key] = (patch as Record<string, unknown>)[key] ?? null;
+      // SQLite can't bind booleans; `needed` is stored as 0/1.
+      params[key] = key === "needed" ? (raw ? 1 : 0) : (raw ?? null);
     }
   }
   if (!sets.length) return getItem(id);

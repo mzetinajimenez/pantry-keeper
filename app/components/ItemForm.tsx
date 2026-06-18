@@ -29,6 +29,7 @@ export default function ItemForm({
   const [location, setLocation] = useState(initial.location ?? "Pantry");
   const [expiration, setExpiration] = useState(initial.expiration_date ?? "");
   const [notes, setNotes] = useState(initial.notes ?? "");
+  const [needed, setNeeded] = useState(Boolean(initial.needed));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +53,7 @@ export default function ItemForm({
         expiration_date: expiration || null,
         image_url: initial.image_url ?? null,
         notes: notes.trim() || null,
+        needed,
       });
     } catch (err) {
       setError((err as Error).message);
@@ -178,6 +180,30 @@ export default function ItemForm({
               rows={2}
             />
           </div>
+
+          <button
+            type="button"
+            onClick={() => setNeeded((n) => !n)}
+            className={`flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left ${
+              needed ? "border-green-500 bg-green-50" : "border-slate-300"
+            }`}
+          >
+            <span className="flex items-center gap-2 font-medium text-slate-700">
+              🛒 Add to shopping list
+              <span className="text-sm font-normal text-slate-500">(need more)</span>
+            </span>
+            <span
+              className={`relative h-6 w-11 rounded-full transition ${
+                needed ? "bg-green-600" : "bg-slate-300"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                  needed ? "left-[1.375rem]" : "left-0.5"
+                }`}
+              />
+            </span>
+          </button>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
