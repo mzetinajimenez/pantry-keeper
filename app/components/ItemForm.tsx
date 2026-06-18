@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Item, ItemInput } from "@/lib/types";
 import { LOCATIONS, UNITS } from "@/lib/types";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 type Props = {
   initial?: Partial<Item>;
@@ -32,6 +33,8 @@ export default function ItemForm({
   const [needed, setNeeded] = useState(Boolean(initial.needed));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalA11y(panelRef, onCancel);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,9 +69,16 @@ export default function ItemForm({
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center">
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="item-form-title"
+        tabIndex={-1}
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-2xl"
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 id="item-form-title" className="text-lg font-semibold">{title}</h2>
           <button onClick={onCancel} className="text-sm text-slate-500 active:text-slate-700">
             Close
           </button>
@@ -116,6 +126,7 @@ export default function ItemForm({
                 <button
                   type="button"
                   onClick={() => setQuantity((q) => Math.max(0, Number(q) - 1))}
+                  aria-label="Decrease"
                   className="rounded-l-lg border border-r-0 border-slate-300 px-3 text-xl text-slate-600 active:bg-slate-100"
                 >
                   −
@@ -131,6 +142,7 @@ export default function ItemForm({
                 <button
                   type="button"
                   onClick={() => setQuantity((q) => Number(q) + 1)}
+                  aria-label="Increase"
                   className="rounded-r-lg border border-l-0 border-slate-300 px-3 text-xl text-slate-600 active:bg-slate-100"
                 >
                   +
@@ -211,7 +223,9 @@ export default function ItemForm({
             {onDelete && (
               <button
                 type="button"
-                onClick={onDelete}
+                onClick={() => {
+                  if (window.confirm(`Delete ${name.trim() || "this item"}?`)) onDelete();
+                }}
                 className="rounded-lg border border-red-200 px-4 py-3 font-medium text-red-600 active:bg-red-50"
               >
                 Delete

@@ -24,10 +24,10 @@ function ExpiryBadge({ date }: { date: string | null }) {
   let text = `exp ${date}`;
   if (d < 0) {
     cls = "bg-red-100 text-red-700";
-    text = "expired";
+    text = "⚠ expired";
   } else if (d === 0) {
     cls = "bg-red-100 text-red-700";
-    text = "today";
+    text = "⚠ today";
   } else if (d <= 7) {
     cls = "bg-amber-100 text-amber-700";
     text = `${d}d left`;
@@ -237,11 +237,16 @@ export default function InventoryClient() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search pantry items"
                 placeholder="Search by name, brand, category…"
                 className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
               />
               {locations.length > 0 && (
-                <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                <div
+                  role="group"
+                  aria-label="Filter by location"
+                  className="mt-2 flex gap-2 overflow-x-auto pb-1"
+                >
                   <Chip active={!locationFilter} onClick={() => setLocationFilter("")}>
                     All
                   </Chip>
@@ -292,7 +297,7 @@ export default function InventoryClient() {
               }
             />
           ) : (
-            <ul className="space-y-2">
+            <ul aria-label="Pantry items" className="space-y-2">
               {pantryItems.map((item) => (
                 <li
                   key={item.id}

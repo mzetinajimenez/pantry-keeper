@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 type Props = {
   onDetected: (barcode: string) => void;
@@ -23,8 +24,10 @@ export default function Scanner({ onDetected, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const handledRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState("");
+  useModalA11y(containerRef, onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,9 +84,16 @@ export default function Scanner({ onDetected, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black">
+    <div
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="scanner-title"
+      tabIndex={-1}
+      className="fixed inset-0 z-50 flex flex-col bg-black"
+    >
       <div className="flex items-center justify-between p-4 text-white">
-        <h2 className="text-lg font-semibold">Scan a barcode</h2>
+        <h2 id="scanner-title" className="text-lg font-semibold">Scan a barcode</h2>
         <button
           onClick={onClose}
           className="rounded-full bg-white/15 px-4 py-2 text-sm font-medium active:bg-white/25"
@@ -104,7 +114,7 @@ export default function Scanner({ onDetected, onClose }: Props) {
           <div className="h-40 w-72 max-w-[80%] rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
         </div>
         {error && (
-          <div className="absolute inset-x-0 top-0 m-4 rounded-lg bg-red-600/90 p-3 text-sm text-white">
+          <div role="alert" className="absolute inset-x-0 top-0 m-4 rounded-lg bg-red-600 p-3 text-sm text-white">
             {error}
           </div>
         )}
@@ -115,6 +125,7 @@ export default function Scanner({ onDetected, onClose }: Props) {
           value={manual}
           onChange={(e) => setManual(e.target.value)}
           inputMode="numeric"
+          aria-label="Barcode or UPC"
           placeholder="…or type a barcode / UPC"
           className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-3 text-white placeholder:text-white/50 focus:border-white/60 focus:outline-none"
         />
