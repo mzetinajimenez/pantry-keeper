@@ -16,12 +16,12 @@ like a native app. No app store required.
 - ➕ **One-tap quantity stepper** and re-scan-to-increment for fast stock-taking
 - 📍 Locations (Pantry / Fridge / Freezer / …), categories, and **expiration tracking**
 - 🔍 Live search and location filters
-- 💾 Local **SQLite** storage — your data stays on your machine
+- 💾 Local **IndexedDB** storage — your data stays in your browser
 
 ## Tech stack
 
 - **Next.js 15** (App Router) + **React 19** + **TypeScript**
-- **better-sqlite3** for storage (file at `data/pantry.db`)
+- **IndexedDB** for storage (browser-only — data stays on-device, no server/database)
 - **@zxing/browser** for barcode decoding
 - **Tailwind CSS v4**
 
@@ -57,24 +57,19 @@ app/
     Scanner.tsx            # camera barcode scanner (ZXing) + manual entry
     ItemForm.tsx           # add / edit item form
   api/
-    items/route.ts         # GET (list) · POST (create)
-    items/[id]/route.ts    # GET · PATCH · DELETE
     lookup/route.ts        # GET barcode → Open Food Facts proxy
 lib/
-  db.ts                    # SQLite connection + schema
-  items.ts                 # data-access queries
-  api.ts                   # client-side fetch helpers
+  clientStore.ts           # IndexedDB-backed data-access (browser-only)
+  api.ts                   # client-side fetch/data helpers
   types.ts                 # shared types & constants
 ```
 
-## Configuration
-
-- `DATABASE_PATH` — override where the SQLite file lives (default `./data/pantry.db`).
-
 ## Deploying later
 
-The app is a standard Next.js project, so it runs anywhere Node does. The one thing to plan for
-is storage: `better-sqlite3` writes to a local file, which is great for a single server / Docker
-volume but not for ephemeral serverless filesystems. For a serverless host (e.g. Vercel), swap
-the storage layer in `lib/db.ts` for a hosted SQLite (Turso/libSQL) or Postgres — the rest of the
-app is unchanged.
+The app is a standard Next.js project, so it runs anywhere Node does. Storage currently lives in
+the browser via IndexedDB — this is a **temporary** setup that's good enough for a single-device
+personal preview, but it doesn't sync across devices and is wiped if the browser's site data is
+cleared. Once it's clear whether multi-device sync matters, swap
+`lib/clientStore.ts` for a hosted backend (e.g. a small set of API routes backed by Turso/libSQL
+or Postgres) — `lib/api.ts` already isolates the storage calls behind a stable function interface
+(`fetchItems`/`createItem`/`updateItem`/`deleteItem`), so the rest of the app is unchanged.
