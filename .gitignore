@@ -5,6 +5,9 @@
 /.next/
 /out/
 
+# vercel (CLI project linkage — not source)
+/.vercel
+
 # production
 /build
 
