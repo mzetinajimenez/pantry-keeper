@@ -79,15 +79,6 @@ export async function getItem(id: number): Promise<Item | undefined> {
   return await_(tx(db, "readonly").get(id) as IDBRequest<Item | undefined>);
 }
 
-export async function findByBarcode(barcode: string): Promise<Item | undefined> {
-  const db = await openDb();
-  const store = tx(db, "readonly");
-  const result = await await_(
-    store.index("barcode").get(barcode) as IDBRequest<Item | undefined>
-  );
-  return result;
-}
-
 export async function createItem(input: ItemInput): Promise<Item> {
   const db = await openDb();
   const now = new Date().toISOString();
@@ -137,4 +128,23 @@ export async function deleteItem(id: number): Promise<boolean> {
   if (!existing) return false;
   await await_(store.delete(id) as IDBRequest<undefined>);
   return true;
+}
+
+/** Every item, for a JSON backup export. */
+export async function exportItems(): Promise<Item[]> {
+  return getAll();
+}
+
+/** Wipe the store and bulk-load items from a backup (restore). Returns the count written. */
+export async function replaceAll(items: Item[]): Promise<number> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE, "readwrite");
+    const store = transaction.objectStore(STORE);
+    store.clear();
+    for (const it of items) store.put(it);
+    transaction.oncomplete = () => resolve(items.length);
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
 }

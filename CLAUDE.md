@@ -2,7 +2,7 @@
 
 Mobile-first web app / PWA for cataloging and taking inventory of a pantry from a phone.
 Scan a barcode → auto-fill from Open Food Facts, or add by hand. Tracks quantity, location,
-and expiration in local SQLite.
+and expiration in the browser's IndexedDB (client-only, single device for now).
 
 ## How the user wants me to work
 - **Focus on functionality.** Prefer shipping working features over process.
@@ -18,11 +18,9 @@ npm run dev          # http://localhost:3000  (background it; camera needs local
 npm run build        # type-checks the whole app — run this to catch errors
 ```
 - Phone/camera testing needs HTTPS: `npx localtunnel --port 3000`, open the https URL on a phone.
-- Quick API smoke test:
+- Items live in IndexedDB (per-browser), so there's no items API to curl — exercise them in the UI.
+  The one server route left is the barcode lookup proxy:
   ```bash
-  curl -s http://localhost:3000/api/items
-  curl -s -X POST http://localhost:3000/api/items -H 'Content-Type: application/json' \
-    -d '{"name":"Test","quantity":2}'
   curl -s "http://localhost:3000/api/lookup?barcode=3017620422003"   # → Nutella
   ```
 
@@ -32,29 +30,31 @@ app/
   page.tsx                 renders the inventory UI (force-dynamic)
   layout.tsx               PWA metadata, viewport, global styles
   components/
-    InventoryClient.tsx    main UI: list, search, scan/add orchestration + toasts
+    InventoryClient.tsx    main UI: list, search, scan/add orchestration, backup menu + toasts
     Scanner.tsx            camera barcode scanner (ZXing) + manual/typed entry fallback
     ItemForm.tsx           add / edit item form
   api/
-    items/route.ts         GET (list) · POST (create)
-    items/[id]/route.ts    GET · PATCH · DELETE
-    lookup/route.ts        GET barcode → Open Food Facts proxy
+    lookup/route.ts        GET barcode → Open Food Facts proxy (only remaining server route)
 lib/
-  db.ts                    SQLite connection + schema (the ONLY storage-specific file)
-  items.ts                 data-access queries
-  api.ts                   client-side fetch helpers
+  clientStore.ts           IndexedDB-backed data-access (the ONLY storage-specific file)
+  api.ts                   data-access facade the UI calls (fetch/create/update/delete + export/import)
+  useModalA11y.ts          focus-trap + Escape-to-close hook for overlays
   types.ts                 shared types (Item, ItemInput, ProductLookup) + LOCATIONS/UNITS
 ```
-- Stack: Next.js 15 (App Router) + React 19 + TypeScript, better-sqlite3, Tailwind v4.
-- API routes set `runtime = "nodejs"` (required for the native SQLite module).
-- `next.config.mjs` marks `better-sqlite3` as a `serverExternalPackages` — keep it there.
+- Stack: Next.js 15 (App Router) + React 19 + TypeScript, IndexedDB (browser), Tailwind v4.
+- No native modules / server DB — `lib/clientStore.ts` runs in the browser, so the app deploys
+  to any static/serverless host with zero storage config.
 
 ## Persistence
-- Single source of truth: **`data/pantry.db`** (SQLite, WAL mode → also `-wal`/`-shm` files).
-- `data/` is **git-ignored** (personal data, not source). Git is NOT a backup.
-- Override location with `DATABASE_PATH`.
-- All storage code is isolated in `lib/db.ts` so it can be swapped for Turso/libSQL or Postgres
-  when deploying to a serverless host (the rest of the app is unchanged).
+- Single source of truth: **IndexedDB** (`pantry-keeper` DB, `items` store) in *this* browser.
+- Client-only and single-device: data does NOT sync across devices and is wiped if the browser's
+  site data is cleared. There is no server-side copy and Git is NOT a backup.
+- **Backup/restore is the safety net:** the header ⋮ menu exports all items to a JSON file and
+  imports one back (restore = replace-all, behind a confirm). Keep this working.
+- All storage code is isolated in `lib/clientStore.ts` behind the `lib/api.ts` facade
+  (`fetchItems`/`createItem`/`updateItem`/`deleteItem`/`exportData`/`importData`), so it can be
+  swapped for a hosted backend (a few API routes over Turso/libSQL or Postgres) when multi-device
+  sync / sharing is needed — the rest of the app is unchanged.
 
 ## Roadmap / product decisions (from the user)
 - **Solo now, sharing later.** No auth yet; keep the data model ready for multi-user.
@@ -67,5 +67,7 @@ lib/
 
 ## Conventions
 - Mobile-first Tailwind; respect iOS safe areas (`env(safe-area-inset-*)`).
-- Optimistic UI for quantity changes, then reconcile with the server.
-- Re-scanning a known barcode increments its quantity instead of duplicating the row.
+- Optimistic UI for quantity changes, then reconcile with the local store.
+- Re-scanning a known barcode increments its quantity instead of duplicating the row
+  (handled in `InventoryClient.handleDetected` via an in-memory barcode match).
+- Overlays (Scanner, ItemForm) use `useModalA11y` for focus-trap + Escape-to-close.

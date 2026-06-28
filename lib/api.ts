@@ -38,6 +38,16 @@ export async function deleteItem(id: number): Promise<void> {
   if (!ok) throw new Error("Not found");
 }
 
+// Backup / restore — the IndexedDB store lives only in this browser, so let
+// users save a JSON copy and load it back (e.g. after clearing site data).
+export async function exportData(): Promise<Item[]> {
+  return store.exportItems();
+}
+
+export async function importData(items: Item[]): Promise<number> {
+  return store.replaceAll(items);
+}
+
 export async function lookupBarcode(barcode: string): Promise<ProductLookup> {
   const res = await fetch(`/api/lookup?barcode=${encodeURIComponent(barcode)}`, {
     cache: "no-store",

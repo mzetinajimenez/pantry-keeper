@@ -199,18 +199,71 @@ export default function InventoryClient() {
     toast(`Deleted ${name}`);
   }
 
+  // Backup: data lives only in this browser, so let the user save/restore a JSON copy.
+  async function handleExport() {
+    try {
+      const data = await api.exportData();
+      const payload = {
+        app: "pantry-keeper",
+        version: 1,
+        exported_at: new Date().toISOString(),
+        items: data,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pantry-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast(`Exported ${data.length} item${data.length === 1 ? "" : "s"}`);
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
+  async function handleImportFile(file: File) {
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown;
+      const raw = Array.isArray(parsed) ? parsed : (parsed as { items?: unknown })?.items;
+      if (!Array.isArray(raw) || raw.length === 0) throw new Error("no items found");
+      const restored = raw as Item[];
+      if (!restored.every((it) => it && typeof it.name === "string")) {
+        throw new Error("file is malformed");
+      }
+      if (
+        items.length > 0 &&
+        !window.confirm(
+          `Replace all ${items.length} current item${items.length === 1 ? "" : "s"} with ${restored.length} from this backup? This can't be undone.`
+        )
+      ) {
+        return;
+      }
+      const n = await api.importData(restored);
+      await load();
+      toast(`Restored ${n} item${n === 1 ? "" : "s"}`);
+    } catch (e) {
+      toast(`Import failed: ${(e as Error).message}`);
+    }
+  }
+
   return (
     <div className="mx-auto min-h-full max-w-2xl">
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h1 className="text-xl font-bold tracking-tight">🥫 Pantry Keeper</h1>
-            <span className="text-sm text-slate-500">
-              {tab === "pantry"
-                ? `${pantryItems.length} item${pantryItems.length === 1 ? "" : "s"} · ${+totalQty.toFixed(2)} total`
-                : `${shoppingItems.length} to buy`}
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-slate-500">
+                {tab === "pantry"
+                  ? `${pantryItems.length} item${pantryItems.length === 1 ? "" : "s"} · ${+totalQty.toFixed(2)} total`
+                  : `${shoppingItems.length} to buy`}
+              </span>
+              <BackupMenu onExport={handleExport} onImport={handleImportFile} />
+            </div>
           </div>
 
           {/* Tabs */}
@@ -508,6 +561,94 @@ function EmptyState({ emoji, title, hint }: { emoji: string; title: string; hint
       <p className="mt-3 font-medium">{title}</p>
       <p className="mt-1 text-sm">{hint}</p>
     </div>
+  );
+}
+
+function BackupMenu({
+  onExport,
+  onImport,
+}: {
+  onExport: () => void;
+  onImport: (file: File) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Backup and data"
+        className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 active:bg-slate-100"
+      >
+        <DotsIcon />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-9 z-30 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onExport();
+            }}
+            className="block w-full px-4 py-2.5 text-left text-sm active:bg-slate-100"
+          >
+            ⬇ Export backup
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => fileRef.current?.click()}
+            className="block w-full px-4 py-2.5 text-left text-sm active:bg-slate-100"
+          >
+            ⬆ Import backup…
+          </button>
+        </div>
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          setOpen(false);
+          if (file) onImport(file);
+        }}
+      />
+    </div>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="5" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="12" cy="19" r="2" />
+    </svg>
   );
 }
 
