@@ -130,6 +130,22 @@ export async function deleteItem(id: number): Promise<boolean> {
   return true;
 }
 
+/**
+ * Ask the browser to mark this origin's storage as persistent, so the
+ * IndexedDB pantry (the only copy of the data) isn't evicted under storage
+ * pressure or by Safari's inactivity cleanup. Safe to call repeatedly;
+ * resolves false when unsupported or denied — the app works either way.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
 /** Every item, for a JSON backup export. */
 export async function exportItems(): Promise<Item[]> {
   return getAll();

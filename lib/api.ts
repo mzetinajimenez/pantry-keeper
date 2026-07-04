@@ -38,6 +38,12 @@ export async function deleteItem(id: number): Promise<void> {
   if (!ok) throw new Error("Not found");
 }
 
+// Best-effort: keep the browser from evicting the local store. Fire-and-forget
+// on startup; becomes a no-op if storage ever moves to a hosted backend.
+export async function requestPersistentStorage(): Promise<boolean> {
+  return store.requestPersistentStorage();
+}
+
 // Backup / restore — the IndexedDB store lives only in this browser, so let
 // users save a JSON copy and load it back (e.g. after clearing site data).
 export async function exportData(): Promise<Item[]> {

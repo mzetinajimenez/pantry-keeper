@@ -6,13 +6,7 @@ This app is a **stock Next.js 15 app**, so Vercel needs **no special config** �
 file). The IndexedDB migration removed that: storage now lives in the browser, and
 the only server code left is the stateless `/api/lookup` proxy to Open Food Facts.
 
-> ⚠️ **Prerequisite:** deploy must include the IndexedDB changes. The old `main`
-> (SQLite) will *build* on Vercel but break at runtime — serverless filesystems are
-> ephemeral and read-only. Land PR #2 (or deploy this branch) first.
-
 ## Quickest path — get it on your phone now
-
-From this worktree (the working files already contain the IndexedDB version):
 
 ```bash
 npx vercel          # first run: log in + link project, then a preview deploy
@@ -27,9 +21,8 @@ npx vercel --prod   # promote to a stable production URL
 
 ## Long-term path — auto-deploy from GitHub
 
-1. Merge PR #2 (IndexedDB) into `main`.
-2. On vercel.com → **Add New Project** → import the `pantry-keeper` repo.
-3. Accept the detected Next.js defaults. Every push to `main` → production; every
+1. On vercel.com → **Add New Project** → import the `pantry-keeper` repo.
+2. Accept the detected Next.js defaults. Every push to `main` → production; every
    branch/PR → its own preview URL.
 
 ## Notes
@@ -38,6 +31,8 @@ npx vercel --prod   # promote to a stable production URL
   each keep their own pantry, and clearing site data wipes it. That's the intended
   temporary setup; real sync means swapping `lib/clientStore.ts` for a hosted backend.
 - **No env vars needed.** `/api/lookup` calls a public API with no key.
-- Optional perf tweak: `app/page.tsx` still sets `export const dynamic = "force-dynamic"`,
-  a leftover from the SQLite era. With all data client-side it can be removed so the
-  shell prerenders as static (served from CDN). Not required for deploy.
+- The app shell prerenders as static (no `force-dynamic`), so `/` is served from
+  Vercel's CDN; the only serverless invocations are `/api/lookup` calls.
+- The app asks for **persistent storage** on first load (`navigator.storage.persist()`)
+  to reduce the risk of the browser evicting IndexedDB. Installing to the home screen
+  further protects data on iOS. JSON export (⋮ menu) is still the real backup.

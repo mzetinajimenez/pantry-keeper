@@ -70,6 +70,9 @@ export default function InventoryClient() {
 
   useEffect(() => {
     load();
+    // Best-effort, fire-and-forget: lower the odds of the browser evicting
+    // IndexedDB (the only copy of the pantry). Failure is fine.
+    void api.requestPersistentStorage();
   }, [load]);
 
   const isNeeded = (it: Item) => it.needed === 1 || it.quantity <= 0;

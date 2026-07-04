@@ -5,7 +5,15 @@ export const metadata: Metadata = {
   title: "Pantry Keeper",
   description: "Scan and catalog the items in your pantry from your phone.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg" },
+  icons: {
+    // PNGs first — iOS ignores SVG icons entirely.
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -19,6 +27,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Required for env(safe-area-inset-*) to be non-zero on notched phones.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
