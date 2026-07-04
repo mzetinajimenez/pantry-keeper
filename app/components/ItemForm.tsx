@@ -2,8 +2,25 @@
 
 import { useRef, useState } from "react";
 import type { Item, ItemInput } from "@/lib/types";
-import { LOCATIONS, UNITS } from "@/lib/types";
+import { CATEGORIES, LOCATIONS, UNITS } from "@/lib/types";
 import { useModalA11y } from "@/lib/useModalA11y";
+
+// Local-time "today + n days" as YYYY-MM-DD (matches <input type="date">).
+function addDays(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+const EXP_PRESETS = [
+  { label: "1 day", days: 1 },
+  { label: "2 days", days: 2 },
+  { label: "3 days", days: 3 },
+  { label: "1 week", days: 7 },
+];
 
 type Props = {
   initial?: Partial<Item>;
@@ -24,11 +41,24 @@ export default function ItemForm({
 }: Props) {
   const [name, setName] = useState(initial.name ?? "");
   const [brand, setBrand] = useState(initial.brand ?? "");
-  const [category, setCategory] = useState(initial.category ?? "");
+  const initialCategory = initial.category ?? "";
+  const [category, setCategory] = useState(initialCategory);
+  // Show the free-text box when an existing category isn't one of the presets
+  // (e.g. a category auto-filled from a barcode lookup).
+  const [categoryCustom, setCategoryCustom] = useState(
+    initialCategory !== "" && !(CATEGORIES as readonly string[]).includes(initialCategory),
+  );
   const [quantity, setQuantity] = useState(initial.quantity ?? 1);
   const [unit, setUnit] = useState(initial.unit ?? "each");
   const [location, setLocation] = useState(initial.location ?? "Pantry");
-  const [expiration, setExpiration] = useState(initial.expiration_date ?? "");
+  const initialExpiration = initial.expiration_date ?? "";
+  const [expiration, setExpiration] = useState(initialExpiration);
+  // Editing an item with a fixed date drops straight into the date picker;
+  // a freshly matched preset (today + n) keeps its chip highlighted instead.
+  const [expirationCustom, setExpirationCustom] = useState(
+    initialExpiration !== "" &&
+      !EXP_PRESETS.some((p) => addDays(p.days) === initialExpiration),
+  );
   const [notes, setNotes] = useState(initial.notes ?? "");
   const [needed, setNeeded] = useState(Boolean(initial.needed));
   const [busy, setBusy] = useState(false);
@@ -66,6 +96,12 @@ export default function ItemForm({
 
   const field = "w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500";
   const label = "mb-1 block text-sm font-medium text-slate-600";
+  const chip = (active: boolean) =>
+    `rounded-full border px-3.5 py-2 text-sm font-medium transition active:scale-95 ${
+      active
+        ? "border-green-600 bg-green-600 text-white"
+        : "border-slate-300 text-slate-600 active:bg-slate-100"
+    }`;
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center">
@@ -113,9 +149,39 @@ export default function ItemForm({
               <label className={label}>Brand</label>
               <input value={brand} onChange={(e) => setBrand(e.target.value)} className={field} />
             </div>
-            <div>
+            <div className="space-y-2">
               <label className={label}>Category</label>
-              <input value={category} onChange={(e) => setCategory(e.target.value)} className={field} />
+              <select
+                value={categoryCustom ? "__custom__" : category}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "__custom__") {
+                    setCategoryCustom(true);
+                    setCategory("");
+                  } else {
+                    setCategoryCustom(false);
+                    setCategory(v);
+                  }
+                }}
+                className={field}
+              >
+                <option value="">Uncategorized</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+                <option value="__custom__">Custom…</option>
+              </select>
+              {categoryCustom && (
+                <input
+                  autoFocus
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className={field}
+                  placeholder="Custom category"
+                />
+              )}
             </div>
           </div>
 
@@ -133,6 +199,7 @@ export default function ItemForm({
                 </button>
                 <input
                   type="number"
+                  inputMode="decimal"
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
                   className="w-full border-y border-slate-300 px-2 py-2.5 text-center text-base focus:outline-none"
@@ -161,26 +228,62 @@ export default function ItemForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={label}>Location</label>
-              <select value={location} onChange={(e) => setLocation(e.target.value)} className={field}>
-                {LOCATIONS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
+          <div>
+            <label className={label}>Location</label>
+            <select value={location} onChange={(e) => setLocation(e.target.value)} className={field}>
+              {LOCATIONS.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={label}>Expires</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setExpiration("");
+                  setExpirationCustom(false);
+                }}
+                className={chip(!expirationCustom && expiration === "")}
+              >
+                None
+              </button>
+              {EXP_PRESETS.map((p) => (
+                <button
+                  key={p.days}
+                  type="button"
+                  onClick={() => {
+                    setExpiration(addDays(p.days));
+                    setExpirationCustom(false);
+                  }}
+                  className={chip(!expirationCustom && expiration === addDays(p.days))}
+                >
+                  {p.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setExpirationCustom(true)}
+                className={chip(expirationCustom)}
+              >
+                Custom…
+              </button>
             </div>
-            <div>
-              <label className={label}>Expires</label>
+            {expirationCustom && (
               <input
                 type="date"
                 value={expiration}
                 onChange={(e) => setExpiration(e.target.value)}
-                className={field}
+                className={`${field} mt-2`}
               />
-            </div>
+            )}
+            {!expirationCustom && expiration !== "" && (
+              <p className="mt-1.5 text-xs text-slate-500">Expires {expiration}</p>
+            )}
           </div>
 
           <div>

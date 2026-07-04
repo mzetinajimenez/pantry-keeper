@@ -41,6 +41,21 @@ export type ProductLookup = {
   quantity_text: string | null;
 };
 
+export const CATEGORIES = [
+  "Produce — Fruit",
+  "Produce — Vegetables",
+  "Dry Goods",
+  "Non-Perishables",
+  "Dairy & Eggs",
+  "Meat & Seafood",
+  "Frozen",
+  "Bakery",
+  "Beverages",
+  "Snacks",
+  "Condiments & Spices",
+  "Other",
+] as const;
+
 export const LOCATIONS = [
   "Pantry",
   "Fridge",
