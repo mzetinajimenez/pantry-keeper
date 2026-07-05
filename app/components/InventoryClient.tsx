@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Item, ItemInput } from "@/lib/types";
+import type { Item, ItemInput, Recipe } from "@/lib/types";
 import * as api from "@/lib/api";
 import Scanner from "./Scanner";
 import ItemForm from "./ItemForm";
@@ -208,9 +208,10 @@ export default function InventoryClient() {
       const data = await api.exportData();
       const payload = {
         app: "pantry-keeper",
-        version: 1,
+        version: 2,
         exported_at: new Date().toISOString(),
-        items: data,
+        items: data.items,
+        recipes: data.recipes,
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -221,7 +222,9 @@ export default function InventoryClient() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast(`Exported ${data.length} item${data.length === 1 ? "" : "s"}`);
+      toast(
+        `Exported ${data.items.length} item${data.items.length === 1 ? "" : "s"} + ${data.recipes.length} recipe${data.recipes.length === 1 ? "" : "s"}`,
+      );
     } catch (e) {
       toast((e as Error).message);
     }
@@ -230,23 +233,41 @@ export default function InventoryClient() {
   async function handleImportFile(file: File) {
     try {
       const parsed = JSON.parse(await file.text()) as unknown;
-      const raw = Array.isArray(parsed) ? parsed : (parsed as { items?: unknown })?.items;
-      if (!Array.isArray(raw) || raw.length === 0) throw new Error("no items found");
-      const restored = raw as Item[];
-      if (!restored.every((it) => it && typeof it.name === "string")) {
+      // v1 backups are a bare array or { items }; v2 adds { recipes }.
+      const rawItems = Array.isArray(parsed) ? parsed : (parsed as { items?: unknown })?.items;
+      const rawRecipes = Array.isArray(parsed) ? undefined : (parsed as { recipes?: unknown })?.recipes;
+      if (!Array.isArray(rawItems) || rawItems.length === 0) throw new Error("no items found");
+      const restoredItems = rawItems as Item[];
+      if (!restoredItems.every((it) => it && typeof it.name === "string")) {
         throw new Error("file is malformed");
+      }
+      let restoredRecipes: Recipe[] | undefined;
+      if (rawRecipes !== undefined) {
+        if (!Array.isArray(rawRecipes)) throw new Error("file is malformed");
+        restoredRecipes = rawRecipes as Recipe[];
+        if (!restoredRecipes.every((r) => r && typeof r.name === "string" && Array.isArray(r.ingredients))) {
+          throw new Error("file is malformed");
+        }
       }
       if (
         items.length > 0 &&
         !window.confirm(
-          `Replace all ${items.length} current item${items.length === 1 ? "" : "s"} with ${restored.length} from this backup? This can't be undone.`
+          `Replace all ${items.length} current item${items.length === 1 ? "" : "s"}${
+            restoredRecipes ? " and all recipes" : ""
+          } with this backup (${restoredItems.length} item${restoredItems.length === 1 ? "" : "s"}${
+            restoredRecipes ? ` + ${restoredRecipes.length} recipe${restoredRecipes.length === 1 ? "" : "s"}` : ""
+          })? This can't be undone.`
         )
       ) {
         return;
       }
-      const n = await api.importData(restored);
+      const n = await api.importData({ items: restoredItems, recipes: restoredRecipes });
       await load();
-      toast(`Restored ${n} item${n === 1 ? "" : "s"}`);
+      toast(
+        `Restored ${n.items} item${n.items === 1 ? "" : "s"}${
+          restoredRecipes ? ` + ${n.recipes} recipe${n.recipes === 1 ? "" : "s"}` : ""
+        }`
+      );
     } catch (e) {
       toast(`Import failed: ${(e as Error).message}`);
     }

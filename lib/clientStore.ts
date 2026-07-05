@@ -1,27 +1,33 @@
 "use client";
 
-import type { Item, ItemInput } from "./types";
+import type { Item, ItemInput, Recipe, RecipeInput } from "./types";
 
 const DB_NAME = "pantry-keeper";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "items";
+const RECIPES = "recipes";
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = (event) => {
       const db = req.result;
-      const store = db.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
-      store.createIndex("barcode", "barcode");
-      store.createIndex("location", "location");
+      if (event.oldVersion < 1) {
+        const store = db.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
+        store.createIndex("barcode", "barcode");
+        store.createIndex("location", "location");
+      }
+      if (event.oldVersion < 2) {
+        db.createObjectStore(RECIPES, { keyPath: "id", autoIncrement: true });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-function tx(db: IDBDatabase, mode: IDBTransactionMode) {
-  return db.transaction(STORE, mode).objectStore(STORE);
+function tx(db: IDBDatabase, mode: IDBTransactionMode, store: string = STORE) {
+  return db.transaction(store, mode).objectStore(store);
 }
 
 function await_<T>(req: IDBRequest<T>): Promise<T> {
@@ -160,6 +166,72 @@ export async function replaceAll(items: Item[]): Promise<number> {
     store.clear();
     for (const it of items) store.put(it);
     transaction.oncomplete = () => resolve(items.length);
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
+
+// ---- Recipes (DB v2) ----
+
+export async function listRecipes(): Promise<Recipe[]> {
+  const db = await openDb();
+  const recipes = await await_(tx(db, "readonly", RECIPES).getAll() as IDBRequest<Recipe[]>);
+  return recipes.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+export async function createRecipe(input: RecipeInput): Promise<Recipe> {
+  const db = await openDb();
+  const now = new Date().toISOString();
+  const record: Omit<Recipe, "id"> = {
+    name: input.name,
+    notes: input.notes ?? null,
+    ingredients: input.ingredients,
+    created_at: now,
+    updated_at: now,
+  };
+  const id = await await_(tx(db, "readwrite", RECIPES).add(record) as IDBRequest<number>);
+  return { ...record, id };
+}
+
+export async function updateRecipe(id: number, input: RecipeInput): Promise<Recipe | undefined> {
+  const db = await openDb();
+  const store = tx(db, "readwrite", RECIPES);
+  const existing = await await_(store.get(id) as IDBRequest<Recipe | undefined>);
+  if (!existing) return undefined;
+  const updated: Recipe = {
+    ...existing,
+    name: input.name,
+    notes: input.notes ?? null,
+    ingredients: input.ingredients,
+    updated_at: new Date().toISOString(),
+  };
+  await await_(store.put(updated) as IDBRequest<number>);
+  return updated;
+}
+
+export async function deleteRecipe(id: number): Promise<boolean> {
+  const db = await openDb();
+  const store = tx(db, "readwrite", RECIPES);
+  const existing = await await_(store.get(id) as IDBRequest<Recipe | undefined>);
+  if (!existing) return false;
+  await await_(store.delete(id) as IDBRequest<undefined>);
+  return true;
+}
+
+/** Every recipe, for a JSON backup export. */
+export function exportRecipes(): Promise<Recipe[]> {
+  return openDb().then((db) => await_(tx(db, "readonly", RECIPES).getAll() as IDBRequest<Recipe[]>));
+}
+
+/** Wipe the recipes store and bulk-load from a backup. Returns the count written. */
+export async function replaceAllRecipes(recipes: Recipe[]): Promise<number> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(RECIPES, "readwrite");
+    const store = transaction.objectStore(RECIPES);
+    store.clear();
+    for (const r of recipes) store.put(r);
+    transaction.oncomplete = () => resolve(recipes.length);
     transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error);
   });
