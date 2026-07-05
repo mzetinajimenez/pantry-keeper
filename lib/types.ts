@@ -30,6 +30,29 @@ export type ItemInput = {
   needed?: number | boolean;
 };
 
+export type RecipeIngredient = {
+  name: string;           // free text, always present
+  item_id: number | null; // link to a pantry item when known
+  quantity: number;
+  unit: string;
+};
+
+export type Recipe = {
+  id: number;
+  name: string;
+  notes: string | null;
+  ingredients: RecipeIngredient[];
+  created_at: string;
+  updated_at: string;
+};
+
+// Fields a client may send when creating/updating a recipe.
+export type RecipeInput = {
+  name: string;
+  notes?: string | null;
+  ingredients: RecipeIngredient[];
+};
+
 // Normalized result from a barcode product lookup.
 export type ProductLookup = {
   barcode: string;
