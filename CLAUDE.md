@@ -16,7 +16,10 @@ and expiration in the browser's IndexedDB (client-only, single device for now).
 npm install
 npm run dev          # http://localhost:3000  (background it; camera needs localhost or HTTPS)
 npm run build        # type-checks the whole app — run this to catch errors
+npm test             # vitest — lib/units + lib/recipeStatus (pure logic)
 ```
+- ⚠ `npm run build` and `npm run dev` share `.next/` — restart the dev server after a build,
+  or the browser gets 404s for stale chunks.
 - Phone/camera testing needs HTTPS: `npx localtunnel --port 3000`, open the https URL on a phone.
 - Items live in IndexedDB (per-browser), so there's no items API to curl — exercise them in the UI.
   The one server route left is the barcode lookup proxy:
@@ -28,29 +31,40 @@ npm run build        # type-checks the whole app — run this to catch errors
 ```
 app/
   page.tsx                 renders the inventory UI (force-dynamic)
-  layout.tsx               PWA metadata, viewport, global styles
+  layout.tsx               PWA metadata, viewport, Fraunces font, global styles
   components/
-    InventoryClient.tsx    main UI: list, search, scan/add orchestration, backup menu + toasts
-    Scanner.tsx            camera barcode scanner (ZXing) + manual/typed entry fallback
+    InventoryClient.tsx    state-owning shell: items/recipes state, all handlers, overlays, toasts
+    PantryTab.tsx          pantry list: search, location chips, sort, expiring filter, first-run
+    RecipesTab.tsx         recipe cards w/ live can-I-make-it status, cook + add-missing actions
+    ShoppingTab.tsx        shopping list + live stock checker (type → see what you have)
     ItemForm.tsx           add / edit item form
+    RecipeForm.tsx         add / edit recipe form (ingredient rows w/ pantry autocomplete)
+    Scanner.tsx            camera barcode scanner (ZXing) + manual/typed entry fallback
+    BottomNav.tsx          bottom tab bar: Pantry · Recipes · [Scan] · Shopping
+    BackupMenu.tsx         header ⋮ menu (export / import backup)
+    ui.tsx                 shared bits: HeaderShell, Chip, EmptyState, ExpiryBadge, icons
   api/
     lookup/route.ts        GET barcode → Open Food Facts proxy (only remaining server route)
 lib/
   clientStore.ts           IndexedDB-backed data-access (the ONLY storage-specific file)
-  api.ts                   data-access facade the UI calls (fetch/create/update/delete + export/import)
+  api.ts                   data-access facade the UI calls (items + recipes CRUD, export/import)
+  units.ts                 unit families (mass/volume/count) + conversions — pure, tested
+  recipeStatus.ts          can-I-make-it calculator (match + compare via units) — pure, tested
   useModalA11y.ts          focus-trap + Escape-to-close hook for overlays
-  types.ts                 shared types (Item, ItemInput, ProductLookup) + LOCATIONS/UNITS
+  types.ts                 shared types (Item, Recipe, RecipeIngredient…) + LOCATIONS/UNITS
 ```
 - Stack: Next.js 15 (App Router) + React 19 + TypeScript, IndexedDB (browser), Tailwind v4.
 - No native modules / server DB — `lib/clientStore.ts` runs in the browser, so the app deploys
   to any static/serverless host with zero storage config.
 
 ## Persistence
-- Single source of truth: **IndexedDB** (`pantry-keeper` DB, `items` store) in *this* browser.
+- Single source of truth: **IndexedDB** (`pantry-keeper` DB **v2**, `items` + `recipes` stores)
+  in *this* browser.
 - Client-only and single-device: data does NOT sync across devices and is wiped if the browser's
   site data is cleared. There is no server-side copy and Git is NOT a backup.
-- **Backup/restore is the safety net:** the header ⋮ menu exports all items to a JSON file and
-  imports one back (restore = replace-all, behind a confirm). Keep this working.
+- **Backup/restore is the safety net:** the header ⋮ menu exports items **and recipes** to a JSON
+  file (`version: 2, { items, recipes }`) and imports one back (restore = replace-all, behind a
+  confirm). v1 backups (items only) still import — they leave recipes untouched. Keep this working.
 - All storage code is isolated in `lib/clientStore.ts` behind the `lib/api.ts` facade
   (`fetchItems`/`createItem`/`updateItem`/`deleteItem`/`exportData`/`importData`), so it can be
   swapped for a hosted backend (a few API routes over Turso/libSQL or Postgres) when multi-device
@@ -63,11 +77,20 @@ lib/
   Real cross-person sharing requires deploying (one shared server) — local is single-user.
 - **Shopping list** = the `needed` flag on items *plus* anything out of stock (`quantity <= 0`).
   Flag items "need more", quick-add to the list, and "got it" clears the flag and +1 stock.
+- **Recipes — shipped 2026-07:** checklist + quantities. Ingredients match pantry items by
+  `item_id` link, falling back to case-insensitive name match. Amounts compare via unit
+  conversion within a family (mass g/kg/oz/lb; volume ml/L/tsp/tbsp/cup/…); cross-family
+  (e.g. cups vs bag) shows an honest "unverified" state, never a fake answer. "Cooked it"
+  decrements comparable stock; "Add missing" flags shortfalls onto the shopping list.
 - Reminders: skipped for now.
 
 ## Conventions
 - Mobile-first Tailwind; respect iOS safe areas (`env(safe-area-inset-*)`).
+- **Warm-kitchen palette** via Tailwind v4 `@theme` tokens in `globals.css`: `cream` background,
+  `pine-*` greens (primary), `terracotta-*` (warnings/expiry/out), `stone` neutrals (not slate),
+  `font-display` = Fraunces for headings. Use these tokens, not raw green/red/slate.
+- Navigation is the fixed bottom tab bar (`BottomNav`): Pantry · Recipes · [Scan] · Shopping.
 - Optimistic UI for quantity changes, then reconcile with the local store.
 - Re-scanning a known barcode increments its quantity instead of duplicating the row
   (handled in `InventoryClient.handleDetected` via an in-memory barcode match).
-- Overlays (Scanner, ItemForm) use `useModalA11y` for focus-trap + Escape-to-close.
+- Overlays (Scanner, ItemForm, RecipeForm) use `useModalA11y` for focus-trap + Escape-to-close.
