@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+@theme {
+  --color-cream: #faf6ef;
+  --color-pine-50: #f3f7f1;
+  --color-pine-100: #e2eddc;
+  --color-pine-600: #3d6b35;
+  --color-pine-700: #345c2d;
+  --color-pine-800: #2b4c25;
+  --color-terracotta-100: #f8e3d7;
+  --color-terracotta-600: #c4572e;
+  --color-terracotta-700: #a34524;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
 :root {
   color-scheme: light;
 }
@@ -10,10 +23,10 @@ body {
 }
 
 body {
-  /* Respect iOS safe areas so the bottom action bar clears the home indicator. */
+  /* Respect iOS safe areas so the bottom nav clears the home indicator. */
   padding-bottom: env(safe-area-inset-bottom);
   -webkit-tap-highlight-color: transparent;
-  background-color: #f8fafc;
+  background-color: #faf6ef;
 }
 
 /* Hide number input spinners for the quantity stepper. */
@@ -27,6 +40,6 @@ input[type="number"] {
 }
 
 :focus-visible {
-  outline: 2px solid #16a34a;
+  outline: 2px solid #3d6b35;
   outline-offset: 2px;
 }

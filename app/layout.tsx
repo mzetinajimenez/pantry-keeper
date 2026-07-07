@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { Fraunces } from "next/font/google";
 import "./globals.css";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Pantry Keeper",
@@ -22,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#16a34a",
+  themeColor: "#faf6ef",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -37,8 +45,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-full text-slate-900 antialiased">{children}</body>
+    <html lang="en" className={fraunces.variable}>
+      <body className="min-h-full text-stone-900 antialiased">{children}</body>
     </html>
   );
 }

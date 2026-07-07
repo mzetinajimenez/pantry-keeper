@@ -4,8 +4,8 @@
   "description": "Scan and catalog the items in your pantry from your phone.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#16a34a",
+  "background_color": "#faf6ef",
+  "theme_color": "#faf6ef",
   "icons": [
     {
       "src": "/icon-192.png",
