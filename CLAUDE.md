@@ -8,6 +8,10 @@ and expiration in the browser's IndexedDB (client-only, single device for now).
 - **Focus on functionality.** Prefer shipping working features over process.
 - **Skip PR ceremony — commit and push straight to `main`.** No feature branches / PRs unless asked.
 - **Always ask before installing npm packages / adding dependencies.** Don't auto-run `npm install`.
+- **No backwards-compat shims.** We're the sole owners and only callers — when a format, type, or
+  API changes, break cleanly and migrate everything in the same commit instead of supporting old
+  shapes. One exception: never destroy existing IndexedDB data — the `onupgradeneeded` version
+  migration in `clientStore.ts` stays.
 - End commit messages with the `Co-Authored-By: Claude Opus 4.8` line.
 - Keep the storage layer swappable (see Persistence) so deployment stays easy.
 
@@ -63,8 +67,8 @@ lib/
 - Client-only and single-device: data does NOT sync across devices and is wiped if the browser's
   site data is cleared. There is no server-side copy and Git is NOT a backup.
 - **Backup/restore is the safety net:** the header ⋮ menu exports items **and recipes** to a JSON
-  file (`version: 2, { items, recipes }`) and imports one back (restore = replace-all, behind a
-  confirm). v1 backups (items only) still import — they leave recipes untouched. Keep this working.
+  file (`{ items, recipes }`) and imports one back (restore = replace-all of both stores, behind
+  a confirm). Import expects that same shape — no legacy formats. Keep this working.
 - All storage code is isolated in `lib/clientStore.ts` behind the `lib/api.ts` facade
   (`fetchItems`/`createItem`/`updateItem`/`deleteItem`/`exportData`/`importData`), so it can be
   swapped for a hosted backend (a few API routes over Turso/libSQL or Postgres) when multi-device

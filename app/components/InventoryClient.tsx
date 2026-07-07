@@ -242,42 +242,32 @@ export default function InventoryClient() {
 
   async function handleImportFile(file: File) {
     try {
-      const parsed = JSON.parse(await file.text()) as unknown;
-      // v1 backups are a bare array or { items }; v2 adds { recipes }.
-      const rawItems = Array.isArray(parsed) ? parsed : (parsed as { items?: unknown })?.items;
-      const rawRecipes = Array.isArray(parsed) ? undefined : (parsed as { recipes?: unknown })?.recipes;
-      if (!Array.isArray(rawItems) || rawItems.length === 0) throw new Error("no items found");
-      const restoredItems = rawItems as Item[];
+      const parsed = JSON.parse(await file.text()) as { items?: unknown; recipes?: unknown };
+      const restoredItems = parsed.items as Item[];
+      const restoredRecipes = parsed.recipes as Recipe[];
+      if (!Array.isArray(restoredItems) || restoredItems.length === 0) throw new Error("no items found");
       if (!restoredItems.every((it) => it && typeof it.name === "string")) {
         throw new Error("file is malformed");
       }
-      let restoredRecipes: Recipe[] | undefined;
-      if (rawRecipes !== undefined) {
-        if (!Array.isArray(rawRecipes)) throw new Error("file is malformed");
-        restoredRecipes = rawRecipes as Recipe[];
-        if (!restoredRecipes.every((r) => r && typeof r.name === "string" && Array.isArray(r.ingredients))) {
-          throw new Error("file is malformed");
-        }
+      if (
+        !Array.isArray(restoredRecipes) ||
+        !restoredRecipes.every((r) => r && typeof r.name === "string" && Array.isArray(r.ingredients))
+      ) {
+        throw new Error("file is malformed");
       }
       if (
         items.length > 0 &&
         !window.confirm(
-          `Replace all ${items.length} current item${items.length === 1 ? "" : "s"}${
-            restoredRecipes ? " and all recipes" : ""
-          } with this backup (${restoredItems.length} item${restoredItems.length === 1 ? "" : "s"}${
-            restoredRecipes ? ` + ${restoredRecipes.length} recipe${restoredRecipes.length === 1 ? "" : "s"}` : ""
-          })? This can't be undone.`
+          `Replace everything with this backup (${restoredItems.length} item${
+            restoredItems.length === 1 ? "" : "s"
+          } + ${restoredRecipes.length} recipe${restoredRecipes.length === 1 ? "" : "s"})? This can't be undone.`
         )
       ) {
         return;
       }
       const n = await api.importData({ items: restoredItems, recipes: restoredRecipes });
       await load();
-      toast(
-        `Restored ${n.items} item${n.items === 1 ? "" : "s"}${
-          restoredRecipes ? ` + ${n.recipes} recipe${n.recipes === 1 ? "" : "s"}` : ""
-        }`
-      );
+      toast(`Restored ${n.items} item${n.items === 1 ? "" : "s"} + ${n.recipes} recipe${n.recipes === 1 ? "" : "s"}`);
     } catch (e) {
       toast(`Import failed: ${(e as Error).message}`);
     }

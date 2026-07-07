@@ -51,13 +51,13 @@ export async function exportData(): Promise<{ items: Item[]; recipes: Recipe[] }
   return { items, recipes };
 }
 
-// Restore = replace-all. A v1 backup has no recipes; leave that store untouched.
+// Restore = replace-all, both stores.
 export async function importData(data: {
   items: Item[];
-  recipes?: Recipe[];
+  recipes: Recipe[];
 }): Promise<{ items: number; recipes: number }> {
   const items = await store.replaceAll(data.items);
-  const recipes = data.recipes ? await store.replaceAllRecipes(data.recipes) : 0;
+  const recipes = await store.replaceAllRecipes(data.recipes);
   return { items, recipes };
 }
 
