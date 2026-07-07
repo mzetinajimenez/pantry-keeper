@@ -114,7 +114,7 @@ export default function Scanner({ onDetected, onClose }: Props) {
           <div className="h-40 w-72 max-w-[80%] rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
         </div>
         {error && (
-          <div role="alert" className="absolute inset-x-0 top-0 m-4 rounded-lg bg-red-600 p-3 text-sm text-white">
+          <div role="alert" className="absolute inset-x-0 top-0 m-4 rounded-lg bg-terracotta-600 p-3 text-sm text-white">
             {error}
           </div>
         )}
@@ -131,7 +131,7 @@ export default function Scanner({ onDetected, onClose }: Props) {
         />
         <button
           type="submit"
-          className="rounded-lg bg-green-600 px-5 py-3 font-semibold text-white active:bg-green-700"
+          className="rounded-lg bg-pine-600 px-5 py-3 font-semibold text-white active:bg-pine-700"
         >
           Use
         </button>

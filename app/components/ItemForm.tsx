@@ -94,13 +94,13 @@ export default function ItemForm({
     }
   }
 
-  const field = "w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500";
-  const label = "mb-1 block text-sm font-medium text-slate-600";
+  const field = "w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base focus:border-pine-600 focus:outline-none focus:ring-1 focus:ring-pine-600";
+  const label = "mb-1 block text-sm font-medium text-stone-600";
   const chip = (active: boolean) =>
     `rounded-full border px-3.5 py-2 text-sm font-medium transition active:scale-95 ${
       active
-        ? "border-green-600 bg-green-600 text-white"
-        : "border-slate-300 text-slate-600 active:bg-slate-100"
+        ? "border-pine-600 bg-pine-600 text-white"
+        : "border-stone-300 text-stone-600 active:bg-stone-100"
     }`;
 
   return (
@@ -114,20 +114,20 @@ export default function ItemForm({
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 id="item-form-title" className="text-lg font-semibold">{title}</h2>
-          <button onClick={onCancel} className="text-sm text-slate-500 active:text-slate-700">
+          <h2 id="item-form-title" className="font-display text-lg font-semibold">{title}</h2>
+          <button onClick={onCancel} className="text-sm text-stone-500 active:text-stone-700">
             Close
           </button>
         </div>
 
         {(initial.image_url || initial.barcode) && (
-          <div className="mb-4 flex items-center gap-3 rounded-lg bg-slate-50 p-3">
+          <div className="mb-4 flex items-center gap-3 rounded-lg bg-stone-50 p-3">
             {initial.image_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={initial.image_url} alt="" className="h-14 w-14 rounded object-contain" />
             )}
             {initial.barcode && (
-              <span className="font-mono text-sm text-slate-500">{initial.barcode}</span>
+              <span className="font-mono text-sm text-stone-500">{initial.barcode}</span>
             )}
           </div>
         )}
@@ -193,7 +193,7 @@ export default function ItemForm({
                   type="button"
                   onClick={() => setQuantity((q) => Math.max(0, Number(q) - 1))}
                   aria-label="Decrease"
-                  className="rounded-l-lg border border-r-0 border-slate-300 px-3 text-xl text-slate-600 active:bg-slate-100"
+                  className="rounded-l-lg border border-r-0 border-stone-300 px-3 text-xl text-stone-600 active:bg-stone-100"
                 >
                   −
                 </button>
@@ -202,7 +202,7 @@ export default function ItemForm({
                   inputMode="decimal"
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="w-full border-y border-slate-300 px-2 py-2.5 text-center text-base focus:outline-none"
+                  className="w-full border-y border-stone-300 px-2 py-2.5 text-center text-base focus:outline-none"
                   min={0}
                   step="any"
                 />
@@ -210,7 +210,7 @@ export default function ItemForm({
                   type="button"
                   onClick={() => setQuantity((q) => Number(q) + 1)}
                   aria-label="Increase"
-                  className="rounded-r-lg border border-l-0 border-slate-300 px-3 text-xl text-slate-600 active:bg-slate-100"
+                  className="rounded-r-lg border border-l-0 border-stone-300 px-3 text-xl text-stone-600 active:bg-stone-100"
                 >
                   +
                 </button>
@@ -282,7 +282,7 @@ export default function ItemForm({
               />
             )}
             {!expirationCustom && expiration !== "" && (
-              <p className="mt-1.5 text-xs text-slate-500">Expires {expiration}</p>
+              <p className="mt-1.5 text-xs text-stone-500">Expires {expiration}</p>
             )}
           </div>
 
@@ -300,16 +300,16 @@ export default function ItemForm({
             type="button"
             onClick={() => setNeeded((n) => !n)}
             className={`flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left ${
-              needed ? "border-green-500 bg-green-50" : "border-slate-300"
+              needed ? "border-pine-600 bg-pine-50" : "border-stone-300"
             }`}
           >
-            <span className="flex items-center gap-2 font-medium text-slate-700">
+            <span className="flex items-center gap-2 font-medium text-stone-700">
               🛒 Add to shopping list
-              <span className="text-sm font-normal text-slate-500">(need more)</span>
+              <span className="text-sm font-normal text-stone-500">(need more)</span>
             </span>
             <span
               className={`relative h-6 w-11 rounded-full transition ${
-                needed ? "bg-green-600" : "bg-slate-300"
+                needed ? "bg-pine-600" : "bg-stone-300"
               }`}
             >
               <span
@@ -320,7 +320,7 @@ export default function ItemForm({
             </span>
           </button>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-terracotta-600">{error}</p>}
 
           <div className="flex gap-3 pt-1">
             {onDelete && (
@@ -329,7 +329,7 @@ export default function ItemForm({
                 onClick={() => {
                   if (window.confirm(`Delete ${name.trim() || "this item"}?`)) onDelete();
                 }}
-                className="rounded-lg border border-red-200 px-4 py-3 font-medium text-red-600 active:bg-red-50"
+                className="rounded-lg border border-terracotta-100 px-4 py-3 font-medium text-terracotta-600 active:bg-terracotta-100"
               >
                 Delete
               </button>
@@ -337,7 +337,7 @@ export default function ItemForm({
             <button
               type="submit"
               disabled={busy}
-              className="flex-1 rounded-lg bg-green-600 px-4 py-3 font-semibold text-white active:bg-green-700 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-pine-600 px-4 py-3 font-semibold text-white active:bg-pine-700 disabled:opacity-50"
             >
               {busy ? "Saving…" : submitLabel}
             </button>
