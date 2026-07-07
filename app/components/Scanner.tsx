@@ -90,7 +90,7 @@ export default function Scanner({ onDetected, onClose }: Props) {
       aria-modal="true"
       aria-labelledby="scanner-title"
       tabIndex={-1}
-      className="fixed inset-0 z-50 flex flex-col bg-black"
+      className="fixed inset-x-0 top-0 z-50 flex h-dvh flex-col bg-black"
     >
       <div className="flex items-center justify-between p-4 text-white">
         <h2 id="scanner-title" className="text-lg font-semibold">Scan a barcode</h2>

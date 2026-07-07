@@ -75,16 +75,16 @@ export default function RecipeForm({ initial, items, title, submitLabel, onSubmi
   const label = "mb-1 block text-sm font-medium text-stone-600";
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center">
+    <div className="fixed inset-x-0 top-0 z-40 flex h-dvh items-end justify-center bg-black/40 sm:items-center">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="recipe-form-title"
         tabIndex={-1}
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-2xl"
+        className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl bg-white sm:rounded-2xl"
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center justify-between p-5 pb-4">
           <h2 id="recipe-form-title" className="font-display text-lg font-semibold">
             {title}
           </h2>
@@ -93,7 +93,8 @@ export default function RecipeForm({ initial, items, title, submitLabel, onSubmi
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Scrollable body; the submit footer below stays pinned in view. */}
+        <form id="recipe-form" onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-4">
           <div>
             <label className={label}>Name *</label>
             <input
@@ -170,9 +171,11 @@ export default function RecipeForm({ initial, items, title, submitLabel, onSubmi
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={field} rows={2} />
           </div>
 
-          {error && <p className="text-sm text-terracotta-600">{error}</p>}
+        </form>
 
-          <div className="flex gap-3 pt-1">
+        <div className="border-t border-stone-100 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3">
+          {error && <p className="mb-2 text-sm text-terracotta-600">{error}</p>}
+          <div className="flex gap-3">
             {onDelete && (
               <button
                 type="button"
@@ -186,13 +189,14 @@ export default function RecipeForm({ initial, items, title, submitLabel, onSubmi
             )}
             <button
               type="submit"
+              form="recipe-form"
               disabled={busy}
               className="flex-1 rounded-lg bg-pine-600 px-4 py-3 font-semibold text-white active:bg-pine-700 disabled:opacity-50"
             >
               {busy ? "Saving…" : submitLabel}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
