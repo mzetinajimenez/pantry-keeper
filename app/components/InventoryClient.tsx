@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Item, ItemInput, Recipe } from "@/lib/types";
+import type { Item, ItemInput, Recipe, RecipeInput } from "@/lib/types";
+import type { RecipeStatus } from "@/lib/recipeStatus";
+import { comparable, convert } from "@/lib/units";
 import * as api from "@/lib/api";
 import Scanner from "./Scanner";
 import ItemForm from "./ItemForm";
+import RecipeForm from "./RecipeForm";
 import PantryTab from "./PantryTab";
+import RecipesTab from "./RecipesTab";
 import ShoppingTab from "./ShoppingTab";
 import BottomNav, { type Tab } from "./BottomNav";
 import BackupMenu from "./BackupMenu";
-import { EmptyState, HeaderShell } from "./ui";
 
 type Toast = { id: number; text: string };
 
@@ -21,6 +24,8 @@ export default function InventoryClient() {
   const [scanning, setScanning] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
   const [adding, setAdding] = useState<Partial<Item> | null>(null);
+  const [addingRecipe, setAddingRecipe] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
 
@@ -147,6 +152,66 @@ export default function InventoryClient() {
     toast(`Deleted ${name}`);
   }
 
+  async function handleCreateRecipe(input: RecipeInput) {
+    await api.createRecipe(input);
+    setAddingRecipe(false);
+    await load();
+    toast(`Added ${input.name}`);
+  }
+
+  async function handleUpdateRecipe(input: RecipeInput) {
+    if (!editingRecipe) return;
+    await api.updateRecipe(editingRecipe.id, input);
+    setEditingRecipe(null);
+    await load();
+    toast("Saved");
+  }
+
+  async function handleDeleteRecipe() {
+    if (!editingRecipe) return;
+    const name = editingRecipe.name;
+    await api.deleteRecipe(editingRecipe.id);
+    setEditingRecipe(null);
+    await load();
+    toast(`Deleted ${name}`);
+  }
+
+  // Flag every missing ingredient: known items get needed=1, unknown ones
+  // become new zero-stock items so they land on the shopping list.
+  async function handleAddMissing(recipe: Recipe, status: RecipeStatus) {
+    try {
+      for (const s of status.missing) {
+        if (s.item) await api.updateItem(s.item.id, { needed: 1 });
+        else await api.createItem({ name: s.ingredient.name, quantity: 0, needed: true });
+      }
+      await load();
+      toast(`Added ${status.missing.length} to shopping list`);
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
+  // Subtract what the recipe used. Only unit-comparable matches are touched;
+  // unverified ingredients are listed as skipped in the confirm.
+  async function handleCook(recipe: Recipe, status: RecipeStatus) {
+    const usable = status.ingredients.filter((s) => s.item && comparable(s.item.unit, s.ingredient.unit));
+    const skipped = status.unverified.length;
+    const lines = usable.map((s) => `• ${s.item!.name}: −${s.ingredient.quantity} ${s.ingredient.unit}`).join("\n");
+    const note = skipped ? `\n(${skipped} unverified ingredient${skipped === 1 ? "" : "s"} left unchanged)` : "";
+    if (!window.confirm(`Cooked “${recipe.name}”? This subtracts from your pantry:\n${lines}${note}`)) return;
+    try {
+      for (const s of usable) {
+        const used = convert(s.ingredient.quantity, s.ingredient.unit, s.item!.unit)!;
+        const next = Math.max(0, +(s.item!.quantity - used).toFixed(2));
+        await api.updateItem(s.item!.id, { quantity: next });
+      }
+      await load();
+      toast(`Cooked ${recipe.name} — pantry updated`);
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
   // Backup: data lives only in this browser, so let the user save/restore a JSON copy.
   async function handleExport() {
     try {
@@ -236,12 +301,15 @@ export default function InventoryClient() {
           onScan={() => setScanning(true)}
         />
       ) : tab === "recipes" ? (
-        <>
-          <HeaderShell subtitle={`${recipes.length} recipe${recipes.length === 1 ? "" : "s"}`} actions={menu} />
-          <main className="px-4 pb-32 pt-3">
-            <EmptyState emoji="🍳" title="Recipes are coming right up" hint="This tab fills in with the next update." />
-          </main>
-        </>
+        <RecipesTab
+          recipes={recipes}
+          items={items}
+          menu={menu}
+          onAdd={() => setAddingRecipe(true)}
+          onEdit={setEditingRecipe}
+          onCook={handleCook}
+          onAddMissing={handleAddMissing}
+        />
       ) : (
         <ShoppingTab
           items={items}
@@ -286,6 +354,26 @@ export default function InventoryClient() {
           onSubmit={handleUpdate}
           onCancel={() => setEditing(null)}
           onDelete={handleDelete}
+        />
+      )}
+      {addingRecipe && (
+        <RecipeForm
+          title="New recipe"
+          submitLabel="Save recipe"
+          items={items}
+          onSubmit={handleCreateRecipe}
+          onCancel={() => setAddingRecipe(false)}
+        />
+      )}
+      {editingRecipe && (
+        <RecipeForm
+          title="Edit recipe"
+          submitLabel="Save changes"
+          initial={editingRecipe}
+          items={items}
+          onSubmit={handleUpdateRecipe}
+          onCancel={() => setEditingRecipe(null)}
+          onDelete={handleDeleteRecipe}
         />
       )}
     </div>
